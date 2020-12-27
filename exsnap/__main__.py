@@ -1,6 +1,6 @@
 import asyncio
 import json
-from os.path import basename
+from os.path import basename, join
 from typing import TextIO, List
 
 import aiofiles
@@ -12,12 +12,12 @@ from alive_progress import alive_bar
 # Snapchat does not want to make it easy for you to request your data.
 
 @click.command()
-@click.argument("-i", default="./memories_history.json", type=click.File())
-@click.argument("-o", default="./", type=click.Path(file_okay=False, writable=True))
-def exsnap(*, _i: TextIO, _o: str):
+@click.option("-i", default="./memories_history.json", type=click.File())
+@click.option("-o", default="./", type=click.Path(file_okay=False, writable=True))
+def exsnap(*, i: TextIO, o: str):
     loop = asyncio.get_event_loop()
     # We will use asyncio so we can benefit from it for web requests
-    loop.run_until_complete(run(_i, _o))
+    loop.run_until_complete(run(i, o))
 
 
 async def get_cdn_urls(download_links: List[str]) -> List[str]:
@@ -48,7 +48,7 @@ async def download_files(cdn_links: List[str], output_directory: str):
     with alive_bar(len(cdn_links), "Downloading Memories") as bar:
         async with ClientSession() as session:
             async def bounded_download(url):
-                filename = basename(url.split("?")[0])
+                filename = join(output_directory, basename(url.split("?")[0]))
                 async with concurrency, session.get(url) as response, aiofiles.open(filename, mode="wb") as out_file:
                     bar()
                     await out_file.write(await response.read())
