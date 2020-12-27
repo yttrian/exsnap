@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="mergecat",
-    version="0.0.7",
+    name="exsnap",
+    version="0.0.1",
     author="Ian Moore",
     author_email="exsnap@yttr.org",
     description="Automate the downloading of Snapchat memories",
