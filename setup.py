@@ -27,6 +27,7 @@ setuptools.setup(
     install_requires=[
         "click",
         "aiohttp",
+        "aiofiles",
         "alive-progress"
     ]
 )

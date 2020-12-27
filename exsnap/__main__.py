@@ -1,7 +1,9 @@
 import asyncio
 import json
+from os.path import basename
 from typing import TextIO, List
 
+import aiofiles
 import click
 from aiohttp import ClientSession
 from alive_progress import alive_bar
@@ -18,7 +20,7 @@ def exsnap(*, _i: TextIO, _o: str):
     loop.run_until_complete(run(_i, _o))
 
 
-async def get_cdn_urls(download_links: List[str]):
+async def get_cdn_urls(download_links: List[str]) -> List[str]:
     tasks = []
     concurrency = asyncio.Semaphore(100)
 
@@ -36,14 +38,33 @@ async def get_cdn_urls(download_links: List[str]):
 
             responses = await asyncio.gather(*tasks)
 
-    return responses
+    return list(responses)
+
+
+async def download_files(cdn_links: List[str], output_directory: str):
+    tasks = []
+    concurrency = asyncio.Semaphore(3)
+
+    with alive_bar(len(cdn_links), "Downloading Memories") as bar:
+        async with ClientSession() as session:
+            async def bounded_download(url):
+                filename = basename(url.split("?")[0])
+                async with concurrency, session.get(url) as response, aiofiles.open(filename, mode="wb") as out_file:
+                    bar()
+                    await out_file.write(await response.read())
+
+            for link in cdn_links:
+                task = asyncio.ensure_future(bounded_download(link))
+                tasks.append(task)
+
+            await asyncio.gather(*tasks)
 
 
 async def run(memories_json: TextIO, output_directory: str):
     # Snapchat gives us links that we need to POST to in order to get a real URL we can GET on to download media
     download_links = [memory["Download Link"] for memory in json.loads(memories_json.read())["Saved Media"]]
     cdn_links = await get_cdn_urls(download_links)
-    print(cdn_links)
+    await download_files(cdn_links, output_directory)
 
 
 if __name__ == "__main__":
